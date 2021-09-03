@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <div class="header">可售楼盘展示</div>
+    <div class="header">可售楼盘展示 -- {{ nowTime }}</div>
     <div class="search">
       <span>项目名称：</span>
       <input v-model="name" />
@@ -90,6 +90,9 @@ export default class App extends Vue {
   organization = "苏州平泰置业有限公司";
   pcInfo = [];
   code = "";
+
+  nowTime = "";
+
   search() {
     this.loading = true;
     axios
@@ -173,6 +176,44 @@ export default class App extends Vue {
       .catch(error => {
         console.log(error);
       });
+  }
+
+  formatDate = (date: Date | string, fmt = "yyyy-MM-dd hh:mm:ss") => {
+    if (typeof date === "string") {
+      return date;
+    }
+
+    let fmtCopy = fmt;
+
+    if (!date || date === null) return null;
+    const o = {
+      "M+": date.getMonth() + 1, // 月份
+      "d+": date.getDate(), // 日
+      "h+": date.getHours(), // 小时
+      "m+": date.getMinutes(), // 分
+      "s+": date.getSeconds(), // 秒
+      "q+": Math.floor((date.getMonth() + 3) / 3), // 季度
+      S: date.getMilliseconds() // 毫秒
+    };
+    if (/(y+)/.test(fmtCopy))
+      fmtCopy = fmtCopy.replace(
+        RegExp.$1,
+        `${date.getFullYear()}`.substr(4 - RegExp.$1.length)
+      );
+    Object.keys(o).forEach(k => {
+      if (new RegExp(`(${k})`).test(fmtCopy))
+        fmtCopy = fmtCopy.replace(
+          RegExp.$1,
+          RegExp.$1.length === 1 ? o[k] : `00${o[k]}`.substr(`${o[k]}`.length)
+        );
+    });
+    return fmtCopy;
+  };
+
+  mounted() {
+    setInterval(() => {
+      this.nowTime = this.formatDate(new Date());
+    });
   }
 }
 </script>
