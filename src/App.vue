@@ -88,12 +88,17 @@ export default class App extends Vue {
   name = "璀璨平江如苑";
   rangeMap = "姑苏区";
   organization = "苏州平泰置业有限公司";
-  pcInfo = [];
+  pcInfo: {
+    code: string;
+    louInfo: {
+      code: string;
+    }[];
+  }[] = [];
   code = "";
 
   nowTime = "";
 
-  search() {
+  search(): void {
     this.loading = true;
     axios
       .post("/apicc/searchPc", {
@@ -115,7 +120,8 @@ export default class App extends Vue {
         console.log(error);
       });
   }
-  getLouInfo(index: number) {
+
+  getLouInfo(index: number): void {
     axios
       .get(
         `/apicc/searchLou?SPJ_ID=${this.pcInfo[index].code}&code=${this.code}`
@@ -126,9 +132,11 @@ export default class App extends Vue {
           this.$set(
             this.pcInfo[index],
             "louInfo",
-            req.data.data.sort((a, b) => {
-              return a.number - b.number;
-            })
+            req.data.data.sort(
+              (a: { number: number }, b: { number: number }) => {
+                return a.number - b.number;
+              }
+            )
           );
           if (index < this.pcInfo.length - 1)
             setTimeout(() => {
@@ -145,7 +153,8 @@ export default class App extends Vue {
         console.log(error);
       });
   }
-  getFwInfo(FIndex: number, index: number) {
+
+  getFwInfo(FIndex: number, index: number): void {
     axios
       .get(
         `/apicc/searchFw?PBTAB_ID=${this.pcInfo[FIndex].louInfo[index].code}&code=${this.code}`
@@ -157,9 +166,10 @@ export default class App extends Vue {
             "fwInfo",
             req.data.data
           );
-          document.getElementById(
+          const tempHtmlNode = document.getElementById(
             this.pcInfo[FIndex].louInfo[index].code
-          ).innerHTML = req.data.data;
+          );
+          if (tempHtmlNode) tempHtmlNode.innerHTML = req.data.data;
           if (index < this.pcInfo[FIndex].louInfo.length - 1)
             setTimeout(() => {
               this.getFwInfo(FIndex, index + 1);
@@ -169,6 +179,11 @@ export default class App extends Vue {
               this.getFwInfo(FIndex + 1, 0);
             }, 1000);
           } else {
+            document.querySelectorAll("td").forEach(item => {
+              item.addEventListener("click", () => {
+                item.classList.toggle("changed");
+              });
+            });
             this.loading = false;
           }
         }
@@ -178,7 +193,10 @@ export default class App extends Vue {
       });
   }
 
-  formatDate = (date: Date | string, fmt = "yyyy-MM-dd hh:mm:ss") => {
+  formatDate = (
+    date: Date | string,
+    fmt = "yyyy-MM-dd hh:mm:ss"
+  ): string | null => {
     if (typeof date === "string") {
       return date;
     }
@@ -210,9 +228,10 @@ export default class App extends Vue {
     return fmtCopy;
   };
 
-  mounted() {
+  mounted(): void {
     setInterval(() => {
-      this.nowTime = this.formatDate(new Date());
+      const temp = this.formatDate(new Date());
+      this.nowTime = temp || `${new Date()}`;
     });
   }
 }
@@ -258,6 +277,9 @@ body {
 }
 .lou-div {
   display: inline-block;
+  .changed {
+    border: solid red 4px;
+  }
 }
 .header {
   background-color: #ff9933;
