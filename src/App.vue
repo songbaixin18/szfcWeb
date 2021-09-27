@@ -23,35 +23,23 @@
         border="0"
         cellpadding="0"
         cellspacing="0"
-        style="table-layout: auto;
-        width: 100; border-collapse: collapse; height: 6px"
+        style="
+          table-layout: auto;
+          width: 100;
+          border-collapse: collapse;
+          height: 6px;
+        "
       >
         <tbody>
           <tr align="middle" class="a12">
-            <td bgcolor="#66cc33" width="20">
-              &nbsp;
-            </td>
-            <td bgcolor="#ffffff" width="20%">
-              可售
-            </td>
-            <td bgcolor="Yellow" width="20">
-              &nbsp;
-            </td>
-            <td bgcolor="#ffffff" width="20%">
-              签约中
-            </td>
-            <td bgcolor="#cccccc" width="20">
-              &nbsp;
-            </td>
-            <td bgcolor="#ffffff" width="20%">
-              不可售
-            </td>
-            <td bgcolor="#666600" width="20">
-              &nbsp;
-            </td>
-            <td bgcolor="#ffffff" width="20%">
-              限制中
-            </td>
+            <td bgcolor="#66cc33" width="20">&nbsp;</td>
+            <td bgcolor="#ffffff" width="20%">可售</td>
+            <td bgcolor="Yellow" width="20">&nbsp;</td>
+            <td bgcolor="#ffffff" width="20%">签约中</td>
+            <td bgcolor="#cccccc" width="20">&nbsp;</td>
+            <td bgcolor="#ffffff" width="20%">不可售</td>
+            <td bgcolor="#666600" width="20">&nbsp;</td>
+            <td bgcolor="#ffffff" width="20%">限制中</td>
           </tr>
         </tbody>
       </table>
@@ -104,19 +92,26 @@ export default class App extends Vue {
       .post("/apicc/searchPc", {
         name: this.name,
         rangeMap: this.rangeMap,
-        organization: this.organization
+        organization: this.organization,
       })
-      .then(req => {
+      .then((req) => {
         console.log(req.data);
         if (req.data.code === 0) {
+          if (req.data.data.length === 0) {
+            this.search();
+            return;
+          }
           this.code = req.data.VCode;
           this.pcInfo = req.data.data;
           setTimeout(() => {
             this.getLouInfo(0);
           }, 1000);
+        } else {
+          this.search();
         }
       })
-      .catch(error => {
+      .catch((error) => {
+        this.search();
         console.log(error);
       });
   }
@@ -126,9 +121,13 @@ export default class App extends Vue {
       .get(
         `/apicc/searchLou?SPJ_ID=${this.pcInfo[index].code}&code=${this.code}`
       )
-      .then(req => {
+      .then((req) => {
         console.log(req.data);
         if (req.data.code === 0) {
+          if (req.data.data.length === 0) {
+            this.getLouInfo(index);
+            return;
+          }
           this.$set(
             this.pcInfo[index],
             "louInfo",
@@ -147,9 +146,12 @@ export default class App extends Vue {
               this.getFwInfo(0, 0);
             }, 1000);
           }
+        } else {
+          this.getLouInfo(index);
         }
       })
-      .catch(error => {
+      .catch((error) => {
+        this.getLouInfo(index);
         console.log(error);
       });
   }
@@ -159,7 +161,7 @@ export default class App extends Vue {
       .get(
         `/apicc/searchFw?PBTAB_ID=${this.pcInfo[FIndex].louInfo[index].code}&code=${this.code}`
       )
-      .then(req => {
+      .then((req) => {
         if (req.data.code === 0) {
           this.$set(
             this.pcInfo[FIndex].louInfo[index],
@@ -179,16 +181,19 @@ export default class App extends Vue {
               this.getFwInfo(FIndex + 1, 0);
             }, 1000);
           } else {
-            document.querySelectorAll("td").forEach(item => {
+            document.querySelectorAll("td").forEach((item) => {
               item.addEventListener("click", () => {
                 item.classList.toggle("changed");
               });
             });
             this.loading = false;
           }
+        } else {
+          this.getFwInfo(FIndex, index);
         }
       })
-      .catch(error => {
+      .catch((error) => {
+        this.getFwInfo(FIndex, index);
         console.log(error);
       });
   }
@@ -211,14 +216,14 @@ export default class App extends Vue {
       "m+": date.getMinutes(), // 分
       "s+": date.getSeconds(), // 秒
       "q+": Math.floor((date.getMonth() + 3) / 3), // 季度
-      S: date.getMilliseconds() // 毫秒
+      S: date.getMilliseconds(), // 毫秒
     };
     if (/(y+)/.test(fmtCopy))
       fmtCopy = fmtCopy.replace(
         RegExp.$1,
         `${date.getFullYear()}`.substr(4 - RegExp.$1.length)
       );
-    Object.keys(o).forEach(k => {
+    Object.keys(o).forEach((k) => {
       if (new RegExp(`(${k})`).test(fmtCopy))
         fmtCopy = fmtCopy.replace(
           RegExp.$1,
