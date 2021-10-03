@@ -15,7 +15,11 @@
       </select>
       <span style="margin: 0 -5px 0 20px">公司名称：</span>
       <input v-model="organization" />
-      <button @click="search" :disabled="loading">查询</button>
+      <button @click="startSearch" :disabled="searchLoading">查询</button>
+      <button @click="startSave" :disabled="saveLoading">存储</button>
+      <span style="margin: 0 -5px 0 20px">选择对比日期：</span>
+      <input v-model="compareDate" type="date" />
+      <button @click="startCompare" :disabled="compareLoading">对比</button>
     </div>
     <div style="margin: 15px 0 0 0">
       <table
@@ -44,7 +48,7 @@
         </tbody>
       </table>
     </div>
-    <div class="req">
+    <div class="req" v-if="reflush">
       <div v-for="itemPc in pcInfo" :key="itemPc.code">
         <div class="pc-title">
           【{{ itemPc.name }} 】- {{ itemPc.organization }} - 标识码：{{
@@ -59,7 +63,11 @@
           <div class="lou-title">
             【{{ itemLou.number }} 】 - 标识码：{{ itemLou.code }}
           </div>
-          <div :id="itemLou.code"></div>
+          <div
+            :id="itemLou.code"
+            v-html="itemLou.fwInfo"
+            @click="changeStatus"
+          ></div>
         </div>
       </div>
     </div>
@@ -72,22 +80,27 @@ import axios from "axios";
 
 @Component
 export default class App extends Vue {
-  loading = false;
+  reflush = true;
+  searchLoading = false;
+  compareLoading = false;
+  saveLoading = false;
   name = "璀璨平江如苑";
   rangeMap = "姑苏区";
   organization = "苏州平泰置业有限公司";
+  compareDate = "";
   pcInfo: {
     code: string;
     louInfo: {
       code: string;
+      fwInfo: string;
+      number: string;
     }[];
   }[] = [];
   code = "";
-
   nowTime = "";
 
-  search(): void {
-    this.loading = true;
+  startSearch(): void {
+    this.searchLoading = true;
     axios
       .post("/apicc/searchPc", {
         name: this.name,
@@ -95,10 +108,9 @@ export default class App extends Vue {
         organization: this.organization,
       })
       .then((req) => {
-        console.log(req.data);
         if (req.data.code === 0) {
           if (req.data.data.length === 0) {
-            this.search();
+            this.startSearch();
             return;
           }
           this.code = req.data.VCode;
@@ -107,11 +119,11 @@ export default class App extends Vue {
             this.getLouInfo(0);
           }, 1000);
         } else {
-          this.search();
+          this.startSearch();
         }
       })
       .catch((error) => {
-        this.search();
+        this.startSearch();
         console.log(error);
       });
   }
@@ -122,7 +134,6 @@ export default class App extends Vue {
         `/apicc/searchLou?SPJ_ID=${this.pcInfo[index].code}&code=${this.code}`
       )
       .then((req) => {
-        console.log(req.data);
         if (req.data.code === 0) {
           if (req.data.data.length === 0) {
             this.getLouInfo(index);
@@ -166,12 +177,8 @@ export default class App extends Vue {
           this.$set(
             this.pcInfo[FIndex].louInfo[index],
             "fwInfo",
-            req.data.data
+            this.formatFWInfo(req.data.data)
           );
-          const tempHtmlNode = document.getElementById(
-            this.pcInfo[FIndex].louInfo[index].code
-          );
-          if (tempHtmlNode) tempHtmlNode.innerHTML = req.data.data;
           if (index < this.pcInfo[FIndex].louInfo.length - 1)
             setTimeout(() => {
               this.getFwInfo(FIndex, index + 1);
@@ -181,12 +188,8 @@ export default class App extends Vue {
               this.getFwInfo(FIndex + 1, 0);
             }, 1000);
           } else {
-            document.querySelectorAll("td").forEach((item) => {
-              item.addEventListener("click", () => {
-                item.classList.toggle("changed");
-              });
-            });
-            this.loading = false;
+            this.searchLoading = false;
+            this.reflushFWView();
           }
         } else {
           this.getFwInfo(FIndex, index);
@@ -198,17 +201,27 @@ export default class App extends Vue {
       });
   }
 
-  formatDate = (
-    date: Date | string,
-    fmt = "yyyy-MM-dd hh:mm:ss"
-  ): string | null => {
+  formatFWInfo(info: string): string {
+    return info.replace(
+      /bgcolor="([#a-zA-Z0-9]+)"/g,
+      (rs: string, $1: string) => {
+        return `style="background-color:${$1};"`;
+      }
+    );
+  }
+
+  changeStatus(item: MouseEvent): void {
+    if (item.target) (item.target as Element).classList.toggle("changed");
+  }
+
+  formatDate = (date: Date | string, fmt = "yyyy-MM-dd hh:mm:ss"): string => {
     if (typeof date === "string") {
       return date;
     }
 
     let fmtCopy = fmt;
 
-    if (!date || date === null) return null;
+    if (!date || date === null) return "";
     const o = {
       "M+": date.getMonth() + 1, // 月份
       "d+": date.getDate(), // 日
@@ -233,7 +246,103 @@ export default class App extends Vue {
     return fmtCopy;
   };
 
+  getHighLightDifferent(newData: string, oldData: string): string {
+    var oldFw = oldData.match(/<td([\S\s]*?)td>/g);
+    var newFw = newData.match(/<td([\S\s]*?)td>/g);
+    if (oldFw)
+      oldFw.forEach((element, index) => {
+        if (newFw) {
+          newFw[index].replaceAll('class="changed" ', "");
+          if (element !== newFw[index]) {
+            console.log(element);
+            console.log(newFw[index]);
+            newData = newData.replace(
+              newFw[index],
+              newFw[index].replace('style="', 'class="changed" style="')
+            );
+          }
+        }
+      });
+    return newData;
+  }
+
+  reflushFWView(): void {
+    this.reflush = false;
+    this.$nextTick(() => {
+      this.reflush = true;
+    });
+  }
+
+  startCompare(): void {
+    this.compareLoading = true;
+    try {
+      this.pcInfo.forEach((pc) => {
+        pc.louInfo.forEach((lou) => {
+          axios
+            .get(
+              `/apicc/getLouData?code=${lou.code}&date=${this.compareDate}`,
+              {}
+            )
+            .then((req) => {
+              if (req.data.code === 0) {
+                if (req.data.data.length === 0) {
+                  throw new Error("无历史数据，退出对比");
+                }
+                lou.fwInfo = this.getHighLightDifferent(
+                  lou.fwInfo.replaceAll('class="changed" ', ""),
+                  this.formatFWInfo(req.data.data)
+                );
+                this.reflushFWView();
+              } else {
+                throw new Error("请求错误，退出对比");
+              }
+            })
+            .catch((error) => {
+              console.log(error);
+            });
+        });
+      });
+      this.compareLoading = false;
+    } catch (error) {
+      this.compareLoading = false;
+      console.log(error);
+    }
+  }
+
+  startSave(): void {
+    this.saveLoading = true;
+    const date = this.formatDate(new Date(), "yyyy-MM-dd");
+    try {
+      this.pcInfo.forEach((pc) => {
+        pc.louInfo.forEach((lou) => {
+          axios
+            .post("/apicc/saveLouData", {
+              code: lou.code,
+              date: date,
+              data: lou.fwInfo,
+            })
+            .then((req) => {
+              if (req.data.code !== 0) {
+                throw new Error("请求错误，退出存储");
+              }
+            })
+            .catch((error) => {
+              console.log(error);
+            });
+        });
+      });
+      this.saveLoading = false;
+    } catch (error) {
+      this.saveLoading = false;
+      console.log(error);
+    }
+  }
+
   mounted(): void {
+    this.compareDate = this.formatDate(
+      new Date(new Date().getTime() - 24 * 3600000),
+      "yyyy-MM-dd"
+    );
     setInterval(() => {
       const temp = this.formatDate(new Date());
       this.nowTime = temp || `${new Date()}`;
