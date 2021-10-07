@@ -1,11 +1,11 @@
 <template>
   <div id="app">
     <div class="header">可售楼盘展示 -- {{ nowTime }}</div>
-    <div class="search">
+    <div class="search" v-for="(item, index) in name" :key="index">
       <span>项目名称：</span>
-      <input v-model="name" />
+      <input v-model="name[index]" />
       <span style="margin-left: 2px">项目区域:</span>
-      <select v-model="rangeMap">
+      <select v-model="rangeMap[index]">
         <option value="工业园区">工业园区</option>
         <option value="吴中区">吴中区</option>
         <option value="相城区">相城区</option>
@@ -14,12 +14,14 @@
         <option value="吴江区">吴江区</option>
       </select>
       <span style="margin: 0 -5px 0 20px">公司名称：</span>
-      <input v-model="organization" />
-      <button @click="startSearch" :disabled="searchLoading">查询</button>
-      <button @click="startSave" :disabled="saveLoading">存储</button>
-      <span style="margin: 0 -5px 0 20px">选择对比日期：</span>
-      <input v-model="compareDate" type="date" />
-      <button @click="startCompare" :disabled="compareLoading">对比</button>
+      <input v-model="organization[index]" />
+      <span v-if="index === 0">
+        <button @click="startSearch(0)" :disabled="searchLoading">查询</button>
+        <button @click="startSave" :disabled="saveLoading">存储</button>
+        <span style="margin: 0 -5px 0 20px">选择对比日期：</span>
+        <input v-model="compareDate" type="date" />
+        <button @click="startCompare" :disabled="compareLoading">对比</button>
+      </span>
     </div>
     <div style="margin: 15px 0 0 0">
       <table
@@ -84,9 +86,14 @@ export default class App extends Vue {
   searchLoading = false;
   compareLoading = false;
   saveLoading = false;
-  name = "璀璨平江如苑";
-  rangeMap = "姑苏区";
-  organization = "苏州平泰置业有限公司";
+  name = ["璀璨平江如苑", "云起平江雅园", "平江新著雅园", "印象平江花园"];
+  rangeMap = ["姑苏区", "姑苏区", "姑苏区", "姑苏区"];
+  organization = [
+    "苏州平泰置业有限公司",
+    "苏州祥都置业有限公司",
+    "苏州星河博源房地产开发有限公司",
+    "苏州宸竣房地产开发有限公司",
+  ];
   compareDate = "";
   pcInfo: {
     code: string;
@@ -99,31 +106,37 @@ export default class App extends Vue {
   code = "";
   nowTime = "";
 
-  startSearch(): void {
+  startSearch(i: number): void {
     this.searchLoading = true;
+    if (i === 0) this.pcInfo = [];
     axios
       .post("/apicc/searchPc", {
-        name: this.name,
-        rangeMap: this.rangeMap,
-        organization: this.organization,
+        name: this.name[i],
+        rangeMap: this.rangeMap[i],
+        organization: this.organization[i],
       })
       .then((req) => {
         if (req.data.code === 0) {
           if (req.data.data.length === 0) {
-            this.startSearch();
+            this.startSearch(i);
             return;
           }
           this.code = req.data.VCode;
-          this.pcInfo = req.data.data;
-          setTimeout(() => {
-            this.getLouInfo(0);
-          }, 1000);
+          this.pcInfo = this.pcInfo.concat(req.data.data);
+          if (i < this.name.length - 1)
+            setTimeout(() => {
+              this.startSearch(i + 1);
+            }, 1000);
+          else
+            setTimeout(() => {
+              this.getLouInfo(0);
+            }, 1000);
         } else {
-          this.startSearch();
+          this.startSearch(i);
         }
       })
       .catch((error) => {
-        this.startSearch();
+        this.startSearch(i);
         console.log(error);
       });
   }
