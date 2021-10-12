@@ -16,11 +16,17 @@
       <span style="margin: 0 -5px 0 20px">公司名称：</span>
       <input v-model="organization[index]" />
       <span v-if="index === 0">
-        <button @click="startSearch(0)" :disabled="searchLoading">查询</button>
-        <button @click="startSave" :disabled="saveLoading">存储</button>
+        <button id="search" @click="startSearch(0)" :disabled="searchLoading">
+          查询
+        </button>
+        <button id="save" @click="startSave" :disabled="saveLoading">
+          存储
+        </button>
         <span style="margin: 0 -5px 0 20px">选择对比日期：</span>
         <input v-model="compareDate" type="date" />
-        <button @click="startCompare" :disabled="compareLoading">对比</button>
+        <button id="compare" @click="startCompare" :disabled="compareLoading">
+          对比
+        </button>
       </span>
     </div>
     <div style="margin: 15px 0 0 0">
