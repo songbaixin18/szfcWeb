@@ -124,7 +124,9 @@ export default class App extends Vue {
       .then((req) => {
         if (req.data.code === 0) {
           if (req.data.data.length === 0) {
-            this.startSearch(i);
+            setTimeout(() => {
+              this.startSearch(i + 1);
+            }, 1000);
             return;
           }
           this.code = req.data.VCode;
@@ -138,11 +140,15 @@ export default class App extends Vue {
               this.getLouInfo(0);
             }, 1000);
         } else {
-          this.startSearch(i);
+          setTimeout(() => {
+            this.startSearch(i + 1);
+          }, 1000);
         }
       })
       .catch((error) => {
-        this.startSearch(i);
+        setTimeout(() => {
+          this.startSearch(i + 1);
+        }, 1000);
         console.log(error);
       });
   }
